@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const { errors, Joi, celebrate } = require('celebrate');
+
 const usersRoutes = require('./routes/users');
 const articlesRoutes = require('./routes/articles');
 const auth = require('./middlewares/auth');
@@ -20,15 +22,22 @@ mongoose.connect('mongodb://localhost:27017/news-apidb', {
   useFindAndModify: false,
   useUnifiedTopology: true,
 });
-// app.use((req, res, next) => {
-//   req.user = {
-//     _id: '5fa85003496f3b4da4470249',
-//   };
-//   next();
-// });
-app.post('/signin', login);
-app.post('/signup', createUser);
+app.post('/signin', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().required().min(2).max(30),
+    email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
+    password: Joi.string().required(),
+  }),
+}), login);
+app.post('/signup', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().required().min(2).max(30),
+    email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
+    password: Joi.string().required(),
+  }),
+}), createUser);
 app.use('/', auth, usersRoutes);
 app.use('/', auth, articlesRoutes);
 app.use(errorLogger);
+app.use(errors());
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
