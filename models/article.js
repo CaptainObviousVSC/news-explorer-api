@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { validatorLink } = require('../utils/validator')
+const { validatorLink } = require('../utils/validator');
+
 const userSchema = new mongoose.Schema({
   keyword: {
     type: String,
@@ -35,6 +36,7 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'user',
     required: true,
+    select: false,
   },
 });
 module.exports = mongoose.model('article', userSchema);

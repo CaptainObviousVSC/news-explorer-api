@@ -3,6 +3,7 @@ const { celebrate, Joi, errors } = require('celebrate');
 
 const { getArticles, postArticle, deleteArticle } = require('../controllers/getArticle');
 const { validatorLink } = require('../utils/validator');
+
 router.get('/articles', getArticles);
 router.post('/articles', celebrate({
   body: Joi.object().keys({
