@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'user',
     required: true,
-    select: false,
+    // select: false,
   },
 });
 module.exports = mongoose.model('article', userSchema);

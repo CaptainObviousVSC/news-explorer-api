@@ -1,3 +1,4 @@
+const express = require('express');
 const errorHandler404 = (err, req, res, next) => {
   const { statusCode = 404, message } = err;
 
@@ -20,6 +21,7 @@ const errorHandler500 = (err, req, res, next) => {
         ? 'На сервере произошла ошибка'
         : message,
     });
+
   next();
 };
 module.exports = { errorHandler404, errorHandler500 };

@@ -4,7 +4,7 @@ const BadRequestError = require('../errors/BadRequestError');
 const ForbiddenError = require('../errors/ForbiddenError');
 
 const getArticles = (req, res, next) => {
-  Article.find({}).select('+owner').populate('owner').orFail(() => {
+  Article.find({}).select('-owner').orFail(() => {
     throw new NotFoundError('Невозможно получить сохраненные статьи');
   })
     .then((data) => res.send(data))
@@ -47,10 +47,10 @@ const deleteArticle = (req, res, next) => {
   const userId = req.user._id;
   Article.findById(articleId)
     .orFail(() => {
-      const err = new ForbiddenError('Forbidden, доступ запрещен');
-      err.statusCode = 403;
+      throw new ForbiddenError('Forbidden, доступ запрещен');
     })
     .then((article) => {
+      console.log(article);
       if (article.owner.toString() === userId) {
         Article.findByIdAndRemove(articleId).then((articles) => res.status(200).send(articles));
       } else {
