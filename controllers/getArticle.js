@@ -1,50 +1,69 @@
 const Article = require('../models/article');
+const NotFoundError = require('../errors/NotFoundError');
+const BadRequestError = require('../errors/BadRequestError');
+const ForbiddenError = require('../errors/ForbiddenError');
 
-const getArticles = (req, res) => {
-  Article.find({}).populate('owner').orFail(() => {
-    const err = new Error('Невозможно получить сохраненные статьи');
-    err.statusCode = 404;
-    throw err;
-  }).then((data) => res.send(data))
+const getArticles = (req, res, next) => {
+  Article.find({}).select('-owner').orFail(() => {
+    throw new NotFoundError('Невозможно получить сохраненные статьи');
+  })
+    .then((data) => res.send(data))
     .catch((err) => {
-      if (err.kind === 'ObjectId') {
-        return res.status(400).send({ message: 'Невалидный ID' });
-      }
       if (err.statusCode === 404) {
-        return res.status(404).send({ message: 'Невозможно получить сохраненные статьи' });
+        next(new NotFoundError('Невозможно получить сохраненные статьи'));
       }
-      return res.status(500).send({ message: 'Ошибка сервера' });
+      next(err);
     });
 };
-const postArticle = (req, res) => {
-  const { keyword, title, text, date, source, image, link } = req.body;
-   const { _id } = req.user;
-  Article.create({ keyword, title, text, date, source, link, image, owner: _id }).then((data) => res.send(data))
-  .catch((err) => {
-    if (err.name === 'ValidationError') {
-      const errorList = Object.keys(err.errors);
-      const messages = errorList.map((item) => err.errors[item].message);
-      res.status(400).send({ message: `Ошибка валидации: ${messages.join(' ')}` });
-    } else {
-      res.status(500).send({ message: 'Ошибка на сервере' });
-    }
-  });
+const postArticle = (req, res, next) => {
+  const {
+    keyword, title, text, date, source, image, link,
+  } = req.body;
+  const { _id } = req.user;
+  Article.create({
+    keyword, title, text, date, source, link, image, owner: _id,
+  }).then((data) => res.send({
+    _id: data._id,
+    title: data.title,
+    text: data.text,
+    date: data.date,
+    source: data.source,
+    link: data.link,
+    image: data.image,
+  }))
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        const errorList = Object.keys(err.errors);
+        const messages = errorList.map((item) => err.errors[item].message);
+        next(new BadRequestError(`Ошибка валидации: ${messages.join(' ')}`));
+      } else {
+        next();
+      }
+    });
 };
-const deleteArticle = (req, res) => {
-  console.log(req.params)
-  const { articleId } = req.params
-  Article.findByIdAndRemove(articleId).orFail(() => {
-    const err = new Error('Невозможно удалить');
-    err.statusCode = 404;
-    throw err;
-  }).then(() => res.status(200).send({ message: 'Карточка удалена' })).catch((err) => {
-    if (err.kind === 'ObjectId') {
-      return res.status(400).send({ message: 'Невалидный ID' });
-    }
-    if (err.statusCode === 404) {
-      return res.status(404).send({ message: 'Невозможно удалить' });
-    }
-    return res.status(500).send({ message: 'Ошибка сервера' });
-  });
+const deleteArticle = (req, res, next) => {
+  console.log(req.params);
+  const { articleId } = req.params;
+  const userId = req.user._id;
+  Article.findById(articleId)
+    .orFail(() => {
+      throw new ForbiddenError('Forbidden, доступ запрещен');
+    })
+    .then((article) => {
+      console.log(article);
+      if (article.owner.toString() === userId) {
+        Article.findByIdAndRemove(articleId).then((articles) => res.status(200).send(articles));
+      } else {
+        throw new ForbiddenError('Forbidden, доступ запрещен');
+      }
+    })
+    .catch((err) => {
+      if (err.statusCode === 403) {
+        next(new ForbiddenError('Forbidden, доступ запрещен'));
+      } else if (err.statusCode === 404) {
+        next(new NotFoundError('пользователь или статья не найдены не найден'));
+      }
+      next(err);
+    });
 };
-module.exports = { getArticles, postArticle, deleteArticle, }
+module.exports = { getArticles, postArticle, deleteArticle };
